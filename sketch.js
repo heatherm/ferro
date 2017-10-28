@@ -5,7 +5,7 @@ function preload(){
 function setup(){
   var cnv = createCanvas(600,600);
   cnv.mouseClicked(togglePlay);
-  fft = new p5.FFT(.95,1024);
+  fft = new p5.FFT(.93,1024);
   sound.amp(0.2);
 }
 
@@ -48,10 +48,30 @@ function drawSpectrumAsCircle() {
   }
 }
 
+function drawSpectrumAsPaintBlob() {
+  var spectrum = fft.analyze();
+  fill(0, 0, 255);
+
+  beginShape();
+  stroke(0, 0, 255);
+  strokeWeight(1);
+  for (var i = 0; i < spectrum.length; i++) {
+    var h = -height + map(spectrum[i], 0, 255, height, 0);
+
+    var radians=i*Math.PI/180*4;
+    var outerX = 300 + h * Math.cos(radians);
+    var outerY = 300 + h * Math.sin(radians);
+
+    curveVertex(outerX, outerY);
+  }
+  endShape();
+
+}
+
 function draw(){
   background(0);
   drawWaveform();
-  drawSpectrumAsCircle();
+  drawSpectrumAsPaintBlob();
 }
 
 // fade sound if mouse is over canvas

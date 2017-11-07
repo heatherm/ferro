@@ -83,132 +83,136 @@
 //   }
 // }
 
-var totalVertices = 100,
-  canvasHeight = 600,
-  canvasWidth = 600,
-  spikeHeight = 0.8;
+// WavesOnSphere_1.0
 
-var xPositions = zeroInitializedArrayOfSize(totalVertices+1),
-  yPositions = zeroInitializedArrayOfSize(totalVertices+1),
-  zPositions = zeroInitializedArrayOfSize(totalVertices+1),
-  V = zeroInitializedArrayOfSize(totalVertices+1),
-  dV = zeroInitializedArrayOfSize(totalVertices+1);
-
-var L, Lmin, radius, i, j, KX, KY, KZ, KV, KdV, K;
-var mic, analyzer, decayRate, minimumThreshold, threshold, fft;
-
+var mic, analyzer;
 
 function setup(){
   mic = new p5.AudioIn()
   mic.start();
 }
 
-function zeroInitializedArrayOfSize(size){
-  return _.range(size).map(function () { return 0 });
-}
+var Nmax = 250,
+  M = 15,
+  H = 0.8,
+  HH = 0.01;
 
-function assignRandomLocation(n){
-  var maxDistance = canvasWidth/2;
-  xPositions[n] = random(-maxDistance,+maxDistance) ;
-  yPositions[n] = random(-maxDistance,+maxDistance) ;
-  zPositions[n] = random(-maxDistance,+maxDistance) ;
-}
+var X = _.range(Nmax+1).map(function () { return 0 }),
+  Y = _.range(Nmax+1).map(function () { return 0 }),
+  Z = _.range(Nmax+1).map(function () { return 0 }),
+  V =_.range(Nmax+1).map(function () { return 0 }),
+  dV = _.range(Nmax+1).map(function () { return 0 });
+
+var L,
+  Lmin,
+  R,
+  N,
+  NN,
+  KX,
+  KY,
+  KZ,
+  KV,
+  KdV,
+  K;
+
+var decayRate, minimumThreshold, threshold, fft;
+
 
 function setup(){
-  background(0,0,0);
-  createCanvas(canvasHeight,canvasWidth);
-  noSmooth();
-  stroke(255,255,255);
-  fill(50,50,50);
-
   mic = new p5.AudioIn()
   analyzer = new p5.Amplitude();
   analyzer.setInput(mic);
 
-  var bands = 1024
-  fft = new p5.FFT(.8, bands);
+  fft = new p5.FFT(.8,1024);
+
 
   decayRate = 0.05;
   minimumThreshold = 0.1;
   threshold = minimumThreshold;
 
   mic.start();
-  radius = 2*sqrt(
-      (4*PI*(200*200)/totalVertices)/(2*sqrt(3))
-    );
+  R = 2*sqrt((4*PI*(200*200)/Nmax)/(2*sqrt(3)));
 
-  for (i = 0 ; i <= totalVertices ; i++ ){
-    assignRandomLocation(i);
+  createCanvas(600,600);
+  background(0,0,0) ;
+  noSmooth() ;
+  stroke(255,255,255) ;
+  fill(50,50,50) ;
+
+  for ( N = 0 ; N <= Nmax ; N++ ){
+    X[N] = random(-300,+300) ;
+    Y[N] = random(-300,+300) ;
+    Z[N] = random(-300,+300) ;
   }
-}
+
+} // setup()
+
+
 
 function draw(){
-  background(0,0,0) ;
 
   var rms = analyzer.getLevel();
 
   threshold = lerp(threshold, minimumThreshold, decayRate);
 
   if(rms > threshold) {
-    createRipple();
+    mousePressed();
     threshold = rms;
   }
+  background(0,0,0) ;
 
-  for (i = 0 ; i <= totalVertices ; i++ ){
-    for (j = i+1 ; j <= totalVertices ; j++ ){
-      L = sqrt(((xPositions[i]-xPositions[j])*(xPositions[i]-xPositions[j]))+((yPositions[i]-yPositions[j])*(yPositions[i]-yPositions[j]))) ;
-      L = sqrt(((zPositions[i]-zPositions[j])*(zPositions[i]-zPositions[j]))+(L*L)) ;
-      if ( L < radius ){
-        M = 15;
-        xPositions[i] = xPositions[i] - ((xPositions[j]-xPositions[i])*((radius-L)/(2*L))) ;
-        yPositions[i] = yPositions[i] - ((yPositions[j]-yPositions[i])*((radius-L)/(2*L))) ;
-        zPositions[i] = zPositions[i] - ((zPositions[j]-zPositions[i])*((radius-L)/(2*L))) ;
-        xPositions[j] = xPositions[j] + ((xPositions[j]-xPositions[i])*((radius-L)/(2*L))) ;
-        yPositions[j] = yPositions[j] + ((yPositions[j]-yPositions[i])*((radius-L)/(2*L))) ;
-        zPositions[j] = zPositions[j] + ((zPositions[j]-zPositions[i])*((radius-L)/(2*L))) ;
-        dV[i] = dV[i] + ((V[j]-V[i])/M) ;
-        dV[j] = dV[j] - ((V[j]-V[i])/M) ;
-        stroke(125+(zPositions[i]/2),125+(zPositions[i]/2),125+(zPositions[i]/2)) ;
-        line(xPositions[i]*1.2*(200+V[i])/200+300,yPositions[i]*1.2*(200+V[i])/200+300,xPositions[j]*1.2*(200+V[j])/200+300,yPositions[j]*1.2*(200+V[j])/200+300) ;
+  for ( N = 0 ; N <= Nmax ; N++ ){
+    for ( NN = N+1 ; NN <= Nmax ; NN++ ){
+      L = sqrt(((X[N]-X[NN])*(X[N]-X[NN]))+((Y[N]-Y[NN])*(Y[N]-Y[NN]))) ;
+      L = sqrt(((Z[N]-Z[NN])*(Z[N]-Z[NN]))+(L*L)) ;
+      if ( L < R ){
+        X[N] = X[N] - ((X[NN]-X[N])*((R-L)/(2*L))) ;
+        Y[N] = Y[N] - ((Y[NN]-Y[N])*((R-L)/(2*L))) ;
+        Z[N] = Z[N] - ((Z[NN]-Z[N])*((R-L)/(2*L))) ;
+        X[NN] = X[NN] + ((X[NN]-X[N])*((R-L)/(2*L))) ;
+        Y[NN] = Y[NN] + ((Y[NN]-Y[N])*((R-L)/(2*L))) ;
+        Z[NN] = Z[NN] + ((Z[NN]-Z[N])*((R-L)/(2*L))) ;
+        dV[N] = dV[N] + ((V[NN]-V[N])/M) ;
+        dV[NN] = dV[NN] - ((V[NN]-V[N])/M) ;
+        stroke(255);
+        // stroke(125+(Z[N]/2),125+(Z[N]/2),125+(Z[N]/2)) ;
+        line(X[N]*1.2*(200+V[N])/200+300,Y[N]*1.2*(200+V[N])/200+300,X[NN]*1.2*(200+V[NN])/200+300,Y[NN]*1.2*(200+V[NN])/200+300) ;
       }
-      if ( zPositions[i] > zPositions[j] ){
-        KX = xPositions[i] ;
-        KY = yPositions[i] ;
-        KZ = zPositions[i] ;
-        KV = V[i] ;
-        KdV = dV[i] ;
-        xPositions[i] = xPositions[j] ;
-        yPositions[i] = yPositions[j] ;
-        zPositions[i] = zPositions[j] ;
-        V[i] = V[j] ; dV[i] = dV[j] ;
-        xPositions[j] = KX ; yPositions[j] = KY ; zPositions[j] = KZ ; V[j] = KV ; dV[j] = KdV ;
+      if ( Z[N] > Z[NN] ){
+        KX = X[N] ; KY = Y[N] ; KZ = Z[N] ; KV = V[N] ; KdV = dV[N] ;
+        X[N] = X[NN] ; Y[N] = Y[NN] ; Z[N] = Z[NN] ; V[N] = V[NN] ; dV[N] = dV[NN] ;
+        X[NN] = KX ; Y[NN] = KY ; Z[NN] = KZ ; V[NN] = KV ; dV[NN] = KdV ;
       }
     }
-    L = sqrt((xPositions[i]*xPositions[i])+(yPositions[i]*yPositions[i])) ;
-    L = sqrt((zPositions[i]*zPositions[i])+(L*L)) ;
-    xPositions[i] = xPositions[i] + (xPositions[i]*(200-L)/(2*L)) ;
-    yPositions[i] = yPositions[i] + (yPositions[i]*(200-L)/(2*L)) ;
-    zPositions[i] = zPositions[i] + (zPositions[i]*(200-L)/(2*L)) ;
-    KZ = zPositions[i] ; KX = xPositions[i] ;
-    // zPositions[i] = (KZ*cos(float(300-mouseX)/10000))-(KX*sin(float(300-mouseX)/10000)) ;
-    // xPositions[i] = (KZ*sin(float(300-mouseX)/10000))+(KX*cos(float(300-mouseX)/10000)) ;
-    KZ = zPositions[i] ; KY = yPositions[i] ;
-    // zPositions[i] = (KZ*cos(float(300-mouseY)/10000))-(KY*sin(float(300-mouseY)/10000)) ;
-    // yPositions[i] = (KZ*sin(float(300-mouseY)/10000))+(KY*cos(float(300-mouseY)/10000)) ;
-    dV[i] = dV[i] - (V[i]*0.01) ;
-    V[i] = V[i] + dV[i] ; dV[i] = dV[i] * spikeHeight ;
+    L = sqrt((X[N]*X[N])+(Y[N]*Y[N])) ;
+    L = sqrt((Z[N]*Z[N])+(L*L)) ;
+    X[N] = X[N] + (X[N]*(200-L)/(2*L)) ;
+    Y[N] = Y[N] + (Y[N]*(200-L)/(2*L)) ;
+    Z[N] = Z[N] + (Z[N]*(200-L)/(2*L)) ;
+    KZ = Z[N] ; KX = X[N] ;
+    Z[N] = (KZ*cos(float(300-mouseX)/10000))-(KX*sin(float(300-mouseX)/10000)) ;
+    X[N] = (KZ*sin(float(300-mouseX)/10000))+(KX*cos(float(300-mouseX)/10000)) ;
+    KZ = Z[N] ; KY = Y[N] ;
+    Z[N] = (KZ*cos(float(300-mouseY)/10000))-(KY*sin(float(300-mouseY)/10000)) ;
+    Y[N] = (KZ*sin(float(300-mouseY)/10000))+(KY*cos(float(300-mouseY)/10000)) ;
+    dV[N] = dV[N] - (V[N]*HH) ;
+    V[N] = V[N] + dV[N] ; dV[N] = dV[N] * H ;
   }
-}
 
-function createRipple(){
-  Lmin = 200 ;
-  j = 0 ;
 
-  for (i = 0 ; i <= totalVertices ; i++ ){
-    L = sqrt(((random(200)-(300+xPositions[i]))*(random(200)-(300+xPositions[i])))+((random(200)-(300+yPositions[i]))*(random(200)-(300+yPositions[i])))) ;
-    if ( zPositions[i] > 0 && L < Lmin ){ j = i ; Lmin = L ; }
+
+} // draw()
+
+
+
+function mousePressed(){
+
+  Lmin = 200 ; NN = 0 ;
+  for ( N = 0 ; N <= Nmax ; N++ ){
+    L = sqrt(((random(200)-(300+X[N]))*(random(200)-(300+X[N])))+((random(200)-(300+Y[N]))*(random(200)-(300+Y[N])))) ;
+    if ( Z[N] > 0 && L < Lmin ){ NN = N ; Lmin = L ; }
   }
-  if ( K == 0 ){ dV[j] = -200 ; K = 1 ; }
-  else{ dV[j] = +200 ; K = 0 ; }
+  if ( K == 0 ){ dV[NN] = -200 ; K = 1 ; }
+  else{ dV[NN] = +200 ; K = 0 ; }
 
-}
+} // mousePressed()

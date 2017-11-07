@@ -80,7 +80,9 @@ void loop() {
   if (thing > 0) {
     lastPot1Value = currentRead;
     outgoing[0] = byte(238);
-    outgoing[1] = byte(map(lastPot1Value, 0, 1023, 5, 225));
+//    outgoing[1] = byte(map(lastPot1Value, 0, 1023, 5, 225));
+    outgoing[1] = byte(map(lastPot1Value, 0, 1023, 0, 9));
+
     Serial.write(outgoing, sizeof(outgoing));    
     delay(300);
   }

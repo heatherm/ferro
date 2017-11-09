@@ -5,10 +5,8 @@
 Servo servo;
 int servoStopSpeed = 90;
 
-int input;
-int button1 = 4;
-int button2 = 5;
-
+int button1;
+int button2;
 int pot1 = A1;
 int lastPot1Value;
 
@@ -18,6 +16,9 @@ byte outgoing[2];
 byte incoming[2];
 
 void setup() {
+  button1 = 4;
+  button2 = 5;
+  
   setupSerial(9600);
   setupServo(13);
   setupButton(button1);
@@ -30,14 +31,12 @@ void loop() {
   receiveTwoBytes();
     if (shouldStopServo()) {
       stopServo();
-    else if (receivedServoDirection()) {
+    } else if (receivedServoDirection()) {
       servo.write(incoming[1]);
     }
-  }
 
   handleButtonClick(button1, 236);
   handleButtonClick(button2, 237);
-
   handlePotentiometerTurn(238);
 }
 
@@ -53,8 +52,8 @@ void setupSerial(int baud) {
 }
 
 void setupServo(int servoPin) {
-  myservo.attach(13);
-  myservo.write(servoStopSpeed);
+  servo.attach(13);
+  servo.write(servoStopSpeed);
 }
 
 void setupButton(int buttonPin){
@@ -94,9 +93,10 @@ void stopServo() {
   servo.write(servoStopSpeed);
 }
 
-void handleButtonClick(int buttonPin, int buttonUniqueId) {
+void handleButtonClick(int buttonPin, int uniqueId) {
   if (digitalRead(buttonPin) == HIGH) {
-    outgoing[0] = byte(buttonUniqueId);
+    Serial.println(uniqueId);
+    outgoing[0] = byte(uniqueId);
     writeOutgoing();
   }  
 }
@@ -105,6 +105,7 @@ void handlePotentiometerTurn(int uniqueId) {
   int currentRead = analogRead(A1);
   bool pastThreshold = abs(currentRead - lastPot1Value) > 100;
   if (pastThreshold == true) {
+    Serial.println(uniqueId);
     lastPot1Value = currentRead;
     outgoing[0] = byte(uniqueId);
 //    outgoing[1] = byte(map(lastPot1Value, 0, 1023, 5, 225));

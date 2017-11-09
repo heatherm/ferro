@@ -7,68 +7,57 @@ import ddf.minim.analysis.*;
 import ddf.minim.ugens.*;
 import ddf.minim.effects.*;
 import ddf.minim.analysis.*;
-import ddf.minim.analysis.FFT;
+//import ddf.minim.analysis.FFT;
 
-public static final int MAX_MILLIS_TO_WAIT = 300;
+public static final int MAX_MILLIS_TO_WAIT = 100;
 
 Serial myPort;
 int val;
 
 Minim minim;
 Minim minim2;
+BeatDetect beat;
+BeatDetect inBeat;
+//FFT fft;
 
 AudioPlayer song;
+AudioPlayer song2;
+AudioPlayer playingSong;
 AudioInput in;
 
-//FFT fft;
 //int sampleRate=44100;
 //int timeSize=1024;
 boolean playing;
-boolean playingLive;
-BeatDetect beat;
-BeatListener bl;
-float movement;
+boolean liveInput;
 
 byte[] bytes = new byte[2];
 int[] incoming = new int[2];
 
 float kickSize,snareSize,hatSize;
+//float inkickSize,insnareSize,inhatSize;
 
 long starttime;
-
-class BeatListener implements AudioListener {
-    private BeatDetect beat;
-    private AudioPlayer source;
-
-    BeatListener(BeatDetect beat, AudioPlayer source) {
-        this.source = source;
-        this.source.addListener(this);
-        this.beat = beat;
-    }
-
-    void samples(float[] samps) {
-        beat.detect(source.mix);
-    }
-
-    void samples(float[] sampsL, float[] sampsR) {
-        beat.detect(source.mix);
-    }
-}
+int lowBand = 10;
+int highBand = 15;
+int incomingByte = 0;
 
 void setup() {
-    size(500, 200);
+    size(200, 50);
     
     for (int i=0; i<2; i++) {
       bytes[i] = byte(0);
+      incoming[i] = byte(0);
     }
-
-    smooth();
+    
     minim = new Minim(this);
-    minim2 = new Minim(this);
+    //minim2 = new Minim(this);
 
-    song = minim.loadFile("data/taro.mp3", 1024);
+    song = minim.loadFile("data/fade.mp3", 1024);
+    //song = minim.loadFile("data/gold.mp3", 1024);
+    song2 = minim.loadFile("data/work.mp3", 1024);
+    playingSong = song;
 
-    in = minim2.getLineIn(Minim.STEREO, 2048);
+    in = minim.getLineIn();
     in.mute();
     in.disableMonitoring();
     //fft = new FFT(in.bufferSize(), in.sampleRate());
@@ -76,148 +65,153 @@ void setup() {
     String portName = Serial.list()[1];
     println(portName);
     myPort = new Serial(this, portName, 9600);
-    myPort.clear();
 
     playing = false;
-    beat = new BeatDetect(song.bufferSize(), song.sampleRate());
+    liveInput = false;
+    beat = new BeatDetect();
+    println("songBeat = " + System.identityHashCode(beat));
+    inBeat = new BeatDetect();
+    println("inBeat = " + System.identityHashCode(inBeat));
+
     beat.detectMode(BeatDetect.FREQ_ENERGY);
-    beat.setSensitivity(10);
+    inBeat.detectMode(BeatDetect.FREQ_ENERGY);
+    beat.setSensitivity(5);
+    inBeat.setSensitivity(10);
     kickSize = snareSize = hatSize = 16;
-    bl = new BeatListener(beat, song);
-    textFont(createFont("Helvetica", 16));
-    textAlign(CENTER);
 }
 
 void draw() {
+    incomingByte = 0;
     background(0);
-
-// receive 2 bytes
-  starttime = millis();
-  println(myPort.available());
-  while ( (myPort.available() < 2) && ((millis() - starttime) < MAX_MILLIS_TO_WAIT) ) {
-    // hang in this loop until we either get 2 bytes of data or 1 second
-    // has gone by
+    receiveTwoBytes();
+    
+  if (!liveInput){
+    beat.detect(playingSong.mix);
+  } else if (liveInput){
+    inBeat.detect(in.mix);
   }
-  if (myPort.available()  < 2) {
-    // the data didn't come in - handle that problem here
-    //myPort.clear();
-  } else {
-    print("incoming");
-    println(incoming[0]);
-    for(int n=0; n < 2; n++) {
-      incoming[n] = myPort.read(); // Then: Get them.
-    }
-  }
-  
-        
-   if (playing == false) {
-        if (incoming[0] == 236) {
-            println("playing");
-            song.play();
-            playing = true;
-            playingLive = false;
-        }
+    //fft.forward(in.mix);
 
-        if (incoming[0] == 237) {
-            song.pause();
-            playing = false;
-            playingLive = true;
-        }
+    if (inputReceivedFrom(236)) {
+       playSong(song);
+    } else if (inputReceivedFrom(237)){
+      println("switching to live");
+      song.pause();
+      song2.pause();
+      playing = true;
+      liveInput = true;
+       //playSong(song2);
     }
 
     if (playing == true) {
-
-       if (incoming[0] == 238) {
-          println("setting sensitivity to " + incoming[1]*3);
-          beat.setSensitivity(incoming[1]*3);
-             beat.setSensitivity(10);
-        }
-        
-        // draw a green rectangle for every detect band
-        // that had an onset this frame
-        float rectW = width / beat.detectSize();
-        for (int i = 0; i < beat.detectSize(); ++i) {
-            // test one frequency band for an onset
-            if (beat.isOnset(i)) {
-                fill(0, 200, 0);
-                rect(i * rectW, 0, rectW, height);
-            }
-        }
-
-        // draw an orange rectangle over the bands in
-        // the range we are querying
-        int lowBand = 5;
-        int highBand = 15;
-        // at least this many bands must have an onset
-        // for isRange to return true
-        int numberOfOnsetsThreshold = 4;
-        if (beat.isRange(lowBand, highBand, numberOfOnsetsThreshold)) {
-            fill(232, 179, 2, 200);
-            rect(rectW * lowBand, 0, (highBand - lowBand) * rectW, height);
-        }
-
-        if (beat.isKick()) kickSize = 32;
-        if (beat.isSnare()) snareSize = 32;
-        if (beat.isHat()) hatSize = 32;
-
-        fill(255);
-
-        textSize(kickSize);
-        text("KICK", width / 4, height / 2);
-
-        textSize(snareSize);
-        text("SNARE", width / 2, height / 2);
-
-        textSize(hatSize);
-        text("HAT", 3 * width / 4, height / 2);
-
-        kickSize = constrain(kickSize * 0.95, 0, 45);
-        snareSize = constrain(snareSize * 0.95, 0, 45);
-        hatSize = constrain(hatSize * 0.95, 0, 45);
-
-        if (snareSize > 25) {
-            bytes[0] = byte(226);
-            int dir = 90 - (int) snareSize * 2;
-            bytes[1] = byte(dir);
-            myPort.write(bytes);
-
+        if(!liveInput){
+          detectWith(beat, 2);
         } else {
-            bytes[0] = byte(226);
-            int dir = 90 + (int) snareSize;
-            bytes[1] = byte(dir);
-            myPort.write(bytes);
+          detectWith(inBeat, 2);
         }
+      }
+}
 
-        delay(250);
+void receiveTwoBytes() {
+  if (myPort.available() > 1) {
+    if (incomingByte >= 2) {
+      println("clearing? = " + myPort.available());
+      myPort.clear();
+      for (int i=0; i<2; i++) {
+        incoming[i] = byte(0);
+      }
+      println(myPort.available());
+      
+    } else {
+      incoming[incomingByte] = myPort.read();
     }
+    println(incoming[0] + " " + incoming[1]);
+    incomingByte++;
+  }
+}
 
-//    if (playingLive == true) {
-//        fft.forward(in.mix);
-//        stroke(255);
-//        // frequency bands
-//        for (int i = 0; i < fft.specSize(); i++) {
-//            line(i, height, i, height - fft.getBand(i) * 4);
-//        }
-//
-//        stroke(0);
-//
-//        // left and right input waveform
-//        for (int i = 0; i < in.left.size() - 1; i++) {
-//            line(i, 50 + in.left.get(i) * 50, i + 1, 50 + in.left.get(i + 1) * 50);
-//            line(i, 150 + in.right.get(i) * 50, i + 1, 150 + in.right.get(i + 1) * 50);
-//        }
-//    }
+boolean inputReceivedFrom(int inputId){
+  return incoming[0] == inputId;
+}
 
+void playSong(AudioPlayer newSong){
+  if (newSong.isPlaying()){
+    return;
+  } else {
+    song.pause();
+    song2.pause();
+  } 
+
+  playingSong = newSong;
+  playingSong.play();
+  playingSong.loop();
+  println("Playing: " + playingSong.getMetaData().title());
+  playing = true;
+  liveInput = false;
+}
+
+void rotateCounterClockwise(int intensity){
+  bytes[0] = byte(226);
+  int dir = 90 - intensity;
+  bytes[1] = byte(dir);
+  myPort.write(bytes);
+}
+
+void rotateClockwise(int intensity){
+  rotateCounterClockwise(intensity * -1);
+}
+
+void detectWith(BeatDetect detector, int numberOfOnsetsThreshold){
+  println("analyzing with " + System.identityHashCode(detector));
+  println("detector.iskKick" + detector.isKick());
+  println("inbeat.iskKick" + inBeat.isKick());
+    println("beat.iskKick" + beat.isKick());
+
+  if (detector.isKick()) kickSize = 32;
+  if (detector.isSnare()) snareSize = 32;
+  if (detector.isHat()) hatSize = 32;
+
+  fill(255);
+  textSize(kickSize);
+  text("KICK", width / 4, height / 2);
+  textSize(snareSize);
+  text("SNARE", width / 2, height / 2);
+
+  textSize(hatSize);
+  text("HAT", 3 * width / 4, height / 2);
+
+  kickSize = constrain(kickSize * 0.95, 0, 45);
+  snareSize = constrain(snareSize * 0.95, 0, 40);
+  hatSize = constrain(hatSize * 0.95, 0, 35);
+
+ if (inputReceivedFrom(238)) {
+    lowBand = 1;
+    highBand = 3 * incoming[1];
+    println("listending for beats between " + lowBand + " and " + highBand);
+    println("setting sensitivity to " + incoming[1]);
+    beat.setSensitivity(incoming[1]);
+    inBeat.setSensitivity(incoming[1] * 10);
+  }
+  boolean beatsDetectedInRange = detector.isRange(lowBand, highBand, numberOfOnsetsThreshold);
+  
+  if (beatsDetectedInRange){
+    rotateCounterClockwise((int)kickSize * 2);
+  } else if (hatSize > snareSize){
+    rotateClockwise((int) (10 + hatSize/2));
+  } else if (snareSize > hatSize){
+    rotateClockwise((int) (5 + snareSize/2));
+  }
 }
 
 void stop() {
     bytes[0] = byte(227);
     myPort.write(bytes);
+    myPort.stop();
     song.close();
+    song2.close();
     in.close();
     minim.stop();
     minim2.stop();
     super.stop();
     playing = false;
-    playingLive = false;
 }

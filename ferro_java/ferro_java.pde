@@ -7,7 +7,6 @@ import ddf.minim.analysis.*;
 import ddf.minim.ugens.*;
 import ddf.minim.effects.*;
 import ddf.minim.analysis.*;
-//import ddf.minim.analysis.FFT;
 
 public static final int MAX_MILLIS_TO_WAIT = 100;
 
@@ -18,15 +17,12 @@ Minim minim;
 Minim minim2;
 BeatDetect beat;
 BeatDetect inBeat;
-//FFT fft;
 
 AudioPlayer song;
 AudioPlayer song2;
 AudioPlayer playingSong;
 AudioInput in;
 
-//int sampleRate=44100;
-//int timeSize=1024;
 boolean playing;
 boolean liveInput;
 
@@ -34,7 +30,6 @@ byte[] bytes = new byte[2];
 int[] incoming = new int[2];
 
 float kickSize,snareSize,hatSize;
-//float inkickSize,insnareSize,inhatSize;
 
 long starttime;
 int lowBand = 10;
@@ -50,17 +45,14 @@ void setup() {
     }
     
     minim = new Minim(this);
-    //minim2 = new Minim(this);
 
     song = minim.loadFile("data/fade.mp3", 1024);
-    //song = minim.loadFile("data/gold.mp3", 1024);
     song2 = minim.loadFile("data/work.mp3", 1024);
     playingSong = song;
 
     in = minim.getLineIn();
     in.mute();
     in.disableMonitoring();
-    //fft = new FFT(in.bufferSize(), in.sampleRate());
 
     String portName = Serial.list()[1];
     println(portName);
@@ -69,14 +61,16 @@ void setup() {
     playing = false;
     liveInput = false;
     beat = new BeatDetect();
-    println("songBeat = " + System.identityHashCode(beat));
+    //println("songBeat = " + System.identityHashCode(beat));
     inBeat = new BeatDetect();
-    println("inBeat = " + System.identityHashCode(inBeat));
+    //println("inBeat = " + System.identityHashCode(inBeat));
 
     beat.detectMode(BeatDetect.FREQ_ENERGY);
     inBeat.detectMode(BeatDetect.FREQ_ENERGY);
+    
     beat.setSensitivity(5);
     inBeat.setSensitivity(10);
+    
     kickSize = snareSize = hatSize = 16;
 }
 
@@ -90,26 +84,74 @@ void draw() {
   } else if (liveInput){
     inBeat.detect(in.mix);
   }
-    //fft.forward(in.mix);
 
-    if (inputReceivedFrom(236)) {
-       playSong(song);
-    } else if (inputReceivedFrom(237)){
-      println("switching to live");
-      song.pause();
-      song2.pause();
-      playing = true;
-      liveInput = true;
-       //playSong(song2);
-    }
+  if (inputReceivedFrom(236)) {
+     playSong(song);
+  } else if (inputReceivedFrom(237)){
+     playSong(song2);
+  } else if (inputReceivedFrom(238)){
+    println("switching to live");
+    song.pause();
+    song2.pause();
+    playing = true;
+    liveInput = true;
+  }
 
-    if (playing == true) {
-        if(!liveInput){
-          detectWith(beat, 2);
-        } else {
-          detectWith(inBeat, 2);
-        }
+  if (playing == true) {
+      if(!liveInput){
+        detectWith(beat, 2);
+      } else {
+        detectWith(inBeat, 2);
       }
+    }
+}
+
+void detectWith(BeatDetect detector, int numberOfOnsetsThreshold){
+  println("analyzing with " + System.identityHashCode(detector));
+  println("detector.iskKick" + detector.isKick());
+  println("inbeat.iskKick" + inBeat.isKick());
+    println("beat.iskKick" + beat.isKick());
+
+  if (detector.isKick()) kickSize = 32;
+  if (detector.isSnare()) snareSize = 32;
+  if (detector.isHat()) hatSize = 32;
+
+  fill(255);
+  textSize(kickSize);
+  text("KICK", width / 4, height / 2);
+  textSize(snareSize);
+  text("SNARE", width / 2, height / 2);
+
+  textSize(hatSize);
+  text("HAT", 3 * width / 4, height / 2);
+
+  kickSize = constrain(kickSize * 0.95, 0, 45);
+  snareSize = constrain(snareSize * 0.95, 0, 40);
+  hatSize = constrain(hatSize * 0.95, 0, 35);
+
+ if (inputReceivedFrom(239)) {
+    lowBand = 1;
+    highBand = 3 * incoming[1];
+    println("listening for beats between " + lowBand + " and " + highBand);
+    println("setting song sensitivity to " + incoming[1]  + "ms between beats");
+    println("setting input sensitivity to " + incoming[1]*10 + "ms between beats");
+    beat.setSensitivity(incoming[1]);
+    inBeat.setSensitivity(incoming[1] * 10);
+  } else if (inputReceivedFrom(240)) {
+    int surroundBands = beat.detectSize()-(highBand-lowBand);
+    int bandStart = constrain(incoming[1], 0, surroundBands);
+    lowBand = lowBand + bandStart;
+    highBand = highBand + bandStart;
+  }
+  
+  boolean beatsDetectedInRange = detector.isRange(lowBand, highBand, numberOfOnsetsThreshold);
+  if (beatsDetectedInRange){
+    rotateCounterClockwise((int)kickSize * 2);
+  } else if (hatSize > snareSize){
+    rotateClockwise((int) (10 + hatSize/2));
+  } else if (snareSize > hatSize){
+    rotateClockwise((int) (5 + snareSize/2));
+  }
 }
 
 void receiveTwoBytes() {
@@ -159,48 +201,6 @@ void rotateCounterClockwise(int intensity){
 
 void rotateClockwise(int intensity){
   rotateCounterClockwise(intensity * -1);
-}
-
-void detectWith(BeatDetect detector, int numberOfOnsetsThreshold){
-  println("analyzing with " + System.identityHashCode(detector));
-  println("detector.iskKick" + detector.isKick());
-  println("inbeat.iskKick" + inBeat.isKick());
-    println("beat.iskKick" + beat.isKick());
-
-  if (detector.isKick()) kickSize = 32;
-  if (detector.isSnare()) snareSize = 32;
-  if (detector.isHat()) hatSize = 32;
-
-  fill(255);
-  textSize(kickSize);
-  text("KICK", width / 4, height / 2);
-  textSize(snareSize);
-  text("SNARE", width / 2, height / 2);
-
-  textSize(hatSize);
-  text("HAT", 3 * width / 4, height / 2);
-
-  kickSize = constrain(kickSize * 0.95, 0, 45);
-  snareSize = constrain(snareSize * 0.95, 0, 40);
-  hatSize = constrain(hatSize * 0.95, 0, 35);
-
- if (inputReceivedFrom(238)) {
-    lowBand = 1;
-    highBand = 3 * incoming[1];
-    println("listending for beats between " + lowBand + " and " + highBand);
-    println("setting sensitivity to " + incoming[1]);
-    beat.setSensitivity(incoming[1]);
-    inBeat.setSensitivity(incoming[1] * 10);
-  }
-  boolean beatsDetectedInRange = detector.isRange(lowBand, highBand, numberOfOnsetsThreshold);
-  
-  if (beatsDetectedInRange){
-    rotateCounterClockwise((int)kickSize * 2);
-  } else if (hatSize > snareSize){
-    rotateClockwise((int) (10 + hatSize/2));
-  } else if (snareSize > hatSize){
-    rotateClockwise((int) (5 + snareSize/2));
-  }
 }
 
 void stop() {

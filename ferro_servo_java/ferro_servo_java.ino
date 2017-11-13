@@ -16,10 +16,11 @@ int lastPot2Value;
 
 unsigned long starttime;
 
-byte outgoing[2];
+//byte outgoing[2];
+byte outgoing[1];
 byte incoming[2];
 
-int stopId = 241;
+int stopId = 251;
 
 void setup() {
   button1 = 4;
@@ -46,11 +47,11 @@ void loop() {
     servo.write(incoming[1]);
   }
 
-  handleButtonClick(button1, 236);
-  handleButtonClick(button2, 237);
-  handleButtonClick(button3, 238);
-  lastPot1Value = handlePotentiometerTurn(239, analogRead(A1), lastPot1Value, 670);
-  lastPot2Value = handlePotentiometerTurn(240, analogRead(A2), lastPot2Value, 170);
+  handleButtonClick(button1, 226);
+  handleButtonClick(button2, 227);
+  handleButtonClick(button3, 228);
+  lastPot1Value = handlePotentiometerTurn(240, analogRead(A1), lastPot1Value, 170);
+  lastPot2Value = handlePotentiometerTurn(230, analogRead(A2), lastPot2Value, 670);
   handleStopButtonClick();
 }
 
@@ -100,7 +101,7 @@ boolean receivedServoDirection() {
 }
 
 boolean shouldStopServo() {
- return incoming[0] == 227;
+ return incoming[0] == 217;
 }
 
 void stopServo() {
@@ -111,7 +112,10 @@ void handleButtonClick(int buttonPin, int uniqueId) {
   if (digitalRead(buttonPin) == HIGH) {
     Serial.println(uniqueId);
     outgoing[0] = byte(uniqueId);
-    writeOutgoing();
+//    outgoing[1] = byte(uniqueId); // cheating since it's reading byte 1?
+
+      writeOutgoing();
+   
   } 
 }
 
@@ -125,7 +129,7 @@ void handleStopButtonClick() {
 }
 
 int handlePotentiometerTurn(int uniqueId, int currentRead, int lastValue, int lowRead) {
-  bool pastThreshold = abs(currentRead - lastValue) > 8;
+  bool pastThreshold = abs(currentRead - lastValue) > 100;
   if (pastThreshold == true) {
 //    Serial.println(uniqueId);
     Serial.println(currentRead);
@@ -136,8 +140,9 @@ int handlePotentiometerTurn(int uniqueId, int currentRead, int lastValue, int lo
         float scaledOn1k = map(val, lowLogRead, 69315, 1, 9);
 //              Serial.println(scaledOn1k);
           if (scaledOn1k > 0 && scaledOn1k < 10) {
-            outgoing[0] = byte(uniqueId);
-            outgoing[1] = byte(scaledOn1k);
+            Serial.println(uniqueId + scaledOn1k);
+            outgoing[0] = byte(uniqueId + scaledOn1k);
+//            outgoing[1] = byte(scaledOn1k);
             writeOutgoing();
             lastValue = currentRead;
         }

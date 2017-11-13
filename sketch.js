@@ -92,7 +92,7 @@ function setup(){
   mic.start();
 }
 
-var Nmax = 250,
+var Nmax = 50,
   M = 15,
   H = 0.8,
   HH = 0.01;
@@ -127,7 +127,7 @@ function setup(){
 
 
   decayRate = 0.05;
-  minimumThreshold = 0.1;
+  minimumThreshold = 0.05;
   threshold = minimumThreshold;
 
   mic.start();
@@ -175,7 +175,7 @@ function draw(){
         dV[N] = dV[N] + ((V[NN]-V[N])/M) ;
         dV[NN] = dV[NN] - ((V[NN]-V[N])/M) ;
         stroke(255);
-        // stroke(125+(Z[N]/2),125+(Z[N]/2),125+(Z[N]/2)) ;
+        stroke(125+(Z[N]/2),125+(Z[N]/2),125+(Z[N]/2)) ;
         line(X[N]*1.2*(200+V[N])/200+300,Y[N]*1.2*(200+V[N])/200+300,X[NN]*1.2*(200+V[NN])/200+300,Y[NN]*1.2*(200+V[NN])/200+300) ;
       }
       if ( Z[N] > Z[NN] ){
@@ -190,11 +190,13 @@ function draw(){
     Y[N] = Y[N] + (Y[N]*(200-L)/(2*L)) ;
     Z[N] = Z[N] + (Z[N]*(200-L)/(2*L)) ;
     KZ = Z[N] ; KX = X[N] ;
-    Z[N] = (KZ*cos(float(300-mouseX)/10000))-(KX*sin(float(300-mouseX)/10000)) ;
-    X[N] = (KZ*sin(float(300-mouseX)/10000))+(KX*cos(float(300-mouseX)/10000)) ;
+    console.log(mouseX);
+    console.log(mouseY);
+    Z[N] = (KZ*cos(float(300-303)/10000))-(KX*sin(float(300-303)/10000)) ;
+    X[N] = (KZ*sin(float(300-303)/10000))+(KX*cos(float(300-303)/10000)) ;
     KZ = Z[N] ; KY = Y[N] ;
-    Z[N] = (KZ*cos(float(300-mouseY)/10000))-(KY*sin(float(300-mouseY)/10000)) ;
-    Y[N] = (KZ*sin(float(300-mouseY)/10000))+(KY*cos(float(300-mouseY)/10000)) ;
+    Z[N] = (KZ*cos(float(300-303)/10000))-(KY*sin(float(300-303)/10000)) ;
+    Y[N] = (KZ*sin(float(300-303)/10000))+(KY*cos(float(300-303)/10000)) ;
     dV[N] = dV[N] - (V[N]*HH) ;
     V[N] = V[N] + dV[N] ; dV[N] = dV[N] * H ;
   }

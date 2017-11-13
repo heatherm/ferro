@@ -1,18 +1,18 @@
-#Ferro
+# Ferro
 
-##Processing
+## Processing
 With processing and Minim, I laod mp3s and parse the
 sounds to send via Serial to Arduino:
 
 ferro_java/ferro_java.pde
 
-##Arduino
+## Arduino
 I used an Uno to Control a continuous rotation servo
 with incoming direction cues from Processing:
 
 ferro_servo_java/ferro_servo_java.ino
 
-##Other Materials
+## Other Materials
 
 ### Worked
 - [x]  4 oz ferro fluid

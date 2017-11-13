@@ -4,13 +4,13 @@
 With processing and Minim, I laod mp3s and parse the
 sounds to send via Serial to Arduino:
 
-ferro_java/ferro_java.pde
+[ferro_java.pde](https://github.com/heatherm/ferro/blob/master/ferro_java/ferro_java.pde)
 
 ## Arduino
 I used an Uno to Control a continuous rotation servo
 with incoming direction cues from Processing:
 
-ferro_servo_java/ferro_servo_java.ino
+[ferro_servo_java.ino](https://github.com/heatherm/ferro/blob/master/ferro_servo_java/ferro_servo_java.ino)
 
 ## Other Materials
 
